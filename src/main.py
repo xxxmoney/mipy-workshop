@@ -1,4 +1,4 @@
-# Shadow Switch - v0.2: Tile-Based World
+# Shadow Switch - v0.3: World Switching & Collision
 import pygame
 import sys
 
@@ -14,32 +14,55 @@ PLAYER_SPEED = 5
 TILESIZE = 40
 GRID_WIDTH = WIDTH / TILESIZE
 GRID_HEIGHT = HEIGHT / TILESIZE
-# Colors
-BLACK = (0, 0, 0)
+
+# --- Colors ---
+# General
 WHITE = (255, 255, 255)
-PLAYER_COLOR = (255, 0, 0)  # Red
-WALL_COLOR = (100, 100, 100)  # Grey
-FLOOR_COLOR = (40, 40, 40)  # Dark Grey
+PLAYER_COLOR = (255, 0, 0)
+# Light World
+LIGHT_WALL_COLOR = (130, 82, 1)  # Brown
+LIGHT_FLOOR_COLOR = (210, 180, 140)  # Tan
+# Shadow World
+SHADOW_WALL_COLOR = (75, 0, 130)  # Indigo
+SHADOW_FLOOR_COLOR = (48, 25, 52)  # Dark Purple
 
 # --- Map Data ---
-# A simple hard-coded map. 'W' is a wall, '.' is a floor.
-MAP = [
+# 'W' = Wall, '.' = Floor, 'P' = Player Start
+LIGHT_MAP = [
     "WWWWWWWWWWWWWWWWWWWW",
+    "WP........W........W",
+    "W.WWWWW...W...WWWW.W",
+    "W...W.....W......W.W",
+    "W.W.W.WWWWWWWWW..W.W",
+    "W.W...W..........W.W",
+    "W.W.WWWWW.WWWWWW.W.W",
+    "W.W.W.......W....W.W",
+    "W.W.W.WWWWWWW.WW.W.W",
+    "W.W...W.......W..W.W",
+    "W.WWWWW.WWWWWWWW.W.W",
+    "W.....W..........W.W",
+    "W.WWWWW.WWWWWWWW.W.W",
     "W..................W",
-    "W.WWW..........WWW.W",
-    "W...W..........W...W",
-    "W.W.W..........W.W.W",
-    "W...W..........W...W",
-    "W.WWW..........WWW.W",
-    "W..................W",
-    "W..................W",
-    "W.WWW..........WWW.W",
-    "W...W..........W...W",
-    "W.W.W..........W.W.W",
-    "W...W..........W...W",
-    "W.WWW..........WWW.W",
     "WWWWWWWWWWWWWWWWWWWW",
 ]
+SHADOW_MAP = [
+    "WWWWWWWWWWWWWWWWWWWW",
+    "WP.................W",
+    "W.W.WWWWW.WWWWWWWW.W",
+    "W.W...W.......W..W.W",
+    "W.WWWWW.WWWWWWWW.W.W",
+    "W..................W",
+    "W...WWWWWWWWWWWW...W",
+    "W..................W",
+    "W.WWWW...W...WWWWW.W",
+    "W....W...W...W...W.W",
+    "W.WW.W...W...W.WWW.W",
+    "W.W....W...W...W.W.W",
+    "W.WWWWWW...WWWWW.W.W",
+    "W..................W",
+    "WWWWWWWWWWWWWWWWWWWW",
+]
+MAPS = {'light': LIGHT_MAP, 'shadow': SHADOW_MAP}
 
 
 # --- Player Class ---
@@ -52,36 +75,51 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.Surface([PLAYER_SIZE, PLAYER_SIZE])
         self.image.fill(PLAYER_COLOR)
         self.rect = self.image.get_rect()
-        self.rect.topleft = (x * TILESIZE, y * TILESIZE)
+        self.x = x * TILESIZE
+        self.y = y * TILESIZE
+
+    def move(self, dx=0, dy=0):
+        if not self.check_collision(dx, dy):
+            self.x += dx
+            self.y += dy
+
+    def check_collision(self, dx=0, dy=0):
+        # Create a temporary rect to check for future collision
+        temp_rect = self.rect.copy()
+        temp_rect.x += dx
+        temp_rect.y += dy
+        for wall in self.game.walls:
+            if temp_rect.colliderect(wall.rect):
+                return True
+        return False
 
     def update(self):
         """Update the player's position based on key presses."""
+        dx, dy = 0, 0
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            self.rect.x -= PLAYER_SPEED
+            dx = -PLAYER_SPEED
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            self.rect.x += PLAYER_SPEED
+            dx = PLAYER_SPEED
         if keys[pygame.K_UP] or keys[pygame.K_w]:
-            self.rect.y -= PLAYER_SPEED
+            dy = -PLAYER_SPEED
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            self.rect.y += PLAYER_SPEED
+            dy = PLAYER_SPEED
 
-        # --- Boundary checks ---
-        if self.rect.left < 0: self.rect.left = 0
-        if self.rect.right > WIDTH: self.rect.right = WIDTH
-        if self.rect.top < 0: self.rect.top = 0
-        if self.rect.bottom > HEIGHT: self.rect.bottom = HEIGHT
+        # Move player if no collision
+        self.move(dx=dx, dy=dy)
+        self.rect.topleft = (self.x, self.y)
 
 
 # --- Wall Class ---
 class Wall(pygame.sprite.Sprite):
     """Represents a wall obstacle."""
 
-    def __init__(self, game, x, y):
+    def __init__(self, game, x, y, color):
         super().__init__()
         self.game = game
         self.image = pygame.Surface((TILESIZE, TILESIZE))
-        self.image.fill(WALL_COLOR)
+        self.image.fill(color)
         self.rect = self.image.get_rect()
         self.rect.topleft = (x * TILESIZE, y * TILESIZE)
 
@@ -96,28 +134,39 @@ class Game:
         pygame.display.set_caption("Shadow Switch")
         self.clock = pygame.time.Clock()
         self.running = True
+        self.current_world = 'light'
 
     def new(self):
         """Starts a new game."""
         self.all_sprites = pygame.sprite.Group()
         self.walls = pygame.sprite.Group()
+        self.load_world(self.current_world)
 
-        # Iterate through the map data to create walls and find player start
-        for row, tiles in enumerate(MAP):
+    def load_world(self, world_name):
+        """Loads a map layout, clearing old walls and creating new ones."""
+        # Clear existing walls
+        for wall in self.walls:
+            wall.kill()
+
+        map_data = MAPS[world_name]
+        wall_color = LIGHT_WALL_COLOR if world_name == 'light' else SHADOW_WALL_COLOR
+
+        # Find player position and create walls
+        for row, tiles in enumerate(map_data):
             for col, tile in enumerate(tiles):
                 if tile == 'W':
-                    wall = Wall(self, col, row)
+                    wall = Wall(self, col, row, wall_color)
                     self.all_sprites.add(wall)
                     self.walls.add(wall)
-                elif tile == '.':
-                    # Player starting position can be the first floor tile found
-                    if not hasattr(self, 'player'):
-                        self.player = Player(self, col, row)
-                        self.all_sprites.add(self.player)
+                elif tile == 'P' and not hasattr(self, 'player'):
+                    self.player = Player(self, col, row)
+                    self.all_sprites.add(self.player)
 
-        # In case the map has no floor tiles, place player at a default spot
-        if not hasattr(self, 'player'):
-            self.player = Player(self, 1, 1)  # Default position
+        # Re-add player to ensure it's drawn on top
+        if hasattr(self, 'player'):
+            self.player.add(self.all_sprites)
+        else:  # Default position if no 'P' in map
+            self.player = Player(self, 1, 1)
             self.all_sprites.add(self.player)
 
     def run(self):
@@ -133,6 +182,17 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    self.switch_world()
+
+    def switch_world(self):
+        """Switches between light and shadow worlds."""
+        if self.current_world == 'light':
+            self.current_world = 'shadow'
+        else:
+            self.current_world = 'light'
+        self.load_world(self.current_world)
 
     def update(self):
         """Updates all sprite logic."""
@@ -140,7 +200,8 @@ class Game:
 
     def draw(self):
         """Draws everything to the screen."""
-        self.screen.fill(FLOOR_COLOR)
+        floor_color = LIGHT_FLOOR_COLOR if self.current_world == 'light' else SHADOW_FLOOR_COLOR
+        self.screen.fill(floor_color)
         self.all_sprites.draw(self.screen)
         pygame.display.flip()
 
@@ -152,10 +213,9 @@ class Game:
 # --- Main execution ---
 if __name__ == '__main__':
     game = Game()
-    game.new()  # Initialize a new game state
+    game.new()
     while game.running:
         game.run()
 
     pygame.quit()
     sys.exit()
-
