@@ -1,4 +1,4 @@
-# Shadow Switch - v0.3: World Switching & Collision
+# Shadow Switch - v0.4: Collectibles & Scoring
 import pygame
 import sys
 
@@ -12,37 +12,37 @@ PLAYER_SIZE = 40
 PLAYER_SPEED = 5
 # Tile properties
 TILESIZE = 40
-GRID_WIDTH = WIDTH / TILESIZE
-GRID_HEIGHT = HEIGHT / TILESIZE
+# Font
+FONT_NAME = pygame.font.match_font('arial')
 
 # --- Colors ---
-# General
 WHITE = (255, 255, 255)
 PLAYER_COLOR = (255, 0, 0)
+COLLECTIBLE_COLOR = (255, 255, 0)  # Yellow
 # Light World
-LIGHT_WALL_COLOR = (130, 82, 1)  # Brown
-LIGHT_FLOOR_COLOR = (210, 180, 140)  # Tan
+LIGHT_WALL_COLOR = (130, 82, 1)
+LIGHT_FLOOR_COLOR = (210, 180, 140)
 # Shadow World
-SHADOW_WALL_COLOR = (75, 0, 130)  # Indigo
-SHADOW_FLOOR_COLOR = (48, 25, 52)  # Dark Purple
+SHADOW_WALL_COLOR = (75, 0, 130)
+SHADOW_FLOOR_COLOR = (48, 25, 52)
 
 # --- Map Data ---
-# 'W' = Wall, '.' = Floor, 'P' = Player Start
+# 'W'=Wall, '.'=Floor, 'P'=Player, 'C'=Collectible
 LIGHT_MAP = [
     "WWWWWWWWWWWWWWWWWWWW",
-    "WP........W........W",
+    "WP.C......W........W",
     "W.WWWWW...W...WWWW.W",
     "W...W.....W......W.W",
     "W.W.W.WWWWWWWWW..W.W",
-    "W.W...W..........W.W",
+    "W.W...W.......C..W.W",
     "W.W.WWWWW.WWWWWW.W.W",
     "W.W.W.......W....W.W",
     "W.W.W.WWWWWWW.WW.W.W",
     "W.W...W.......W..W.W",
     "W.WWWWW.WWWWWWWW.W.W",
-    "W.....W..........W.W",
+    "W.C...W..........W.W",
     "W.WWWWW.WWWWWWWW.W.W",
-    "W..................W",
+    "W...............C..W",
     "WWWWWWWWWWWWWWWWWWWW",
 ]
 SHADOW_MAP = [
@@ -51,15 +51,15 @@ SHADOW_MAP = [
     "W.W.WWWWW.WWWWWWWW.W",
     "W.W...W.......W..W.W",
     "W.WWWWW.WWWWWWWW.W.W",
-    "W..................W",
+    "W................C.W",
     "W...WWWWWWWWWWWW...W",
-    "W..................W",
+    "W...........C......W",
     "W.WWWW...W...WWWWW.W",
     "W....W...W...W...W.W",
     "W.WW.W...W...W.WWW.W",
     "W.W....W...W...W.W.W",
     "W.WWWWWW...WWWWW.W.W",
-    "W..................W",
+    "W.C................W",
     "WWWWWWWWWWWWWWWWWWWW",
 ]
 MAPS = {'light': LIGHT_MAP, 'shadow': SHADOW_MAP}
@@ -67,8 +67,6 @@ MAPS = {'light': LIGHT_MAP, 'shadow': SHADOW_MAP}
 
 # --- Player Class ---
 class Player(pygame.sprite.Sprite):
-    """Represents the player character."""
-
     def __init__(self, game, x, y):
         super().__init__()
         self.game = game
@@ -79,6 +77,7 @@ class Player(pygame.sprite.Sprite):
         self.y = y * TILESIZE
 
     def move(self, dx=0, dy=0):
+        # We check for future collision based on movement delta
         if not self.check_collision(dx, dy):
             self.x += dx
             self.y += dy
@@ -94,7 +93,6 @@ class Player(pygame.sprite.Sprite):
         return False
 
     def update(self):
-        """Update the player's position based on key presses."""
         dx, dy = 0, 0
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -105,16 +103,12 @@ class Player(pygame.sprite.Sprite):
             dy = -PLAYER_SPEED
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             dy = PLAYER_SPEED
-
-        # Move player if no collision
         self.move(dx=dx, dy=dy)
         self.rect.topleft = (self.x, self.y)
 
 
 # --- Wall Class ---
 class Wall(pygame.sprite.Sprite):
-    """Represents a wall obstacle."""
-
     def __init__(self, game, x, y, color):
         super().__init__()
         self.game = game
@@ -124,10 +118,19 @@ class Wall(pygame.sprite.Sprite):
         self.rect.topleft = (x * TILESIZE, y * TILESIZE)
 
 
+# --- Collectible Class ---
+class Collectible(pygame.sprite.Sprite):
+    def __init__(self, game, x, y):
+        super().__init__()
+        self.game = game
+        self.image = pygame.Surface((TILESIZE // 2, TILESIZE // 2))
+        self.image.fill(COLLECTIBLE_COLOR)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x * TILESIZE + TILESIZE // 2, y * TILESIZE + TILESIZE // 2)
+
+
 # --- Game Class ---
 class Game:
-    """Manages the game window, loop, and states."""
-
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -135,42 +138,47 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         self.current_world = 'light'
+        self.score = 0
 
     def new(self):
-        """Starts a new game."""
         self.all_sprites = pygame.sprite.Group()
         self.walls = pygame.sprite.Group()
+        self.collectibles = pygame.sprite.Group()
         self.load_world(self.current_world)
+        self.run()
 
     def load_world(self, world_name):
-        """Loads a map layout, clearing old walls and creating new ones."""
-        # Clear existing walls
         for wall in self.walls:
             wall.kill()
+
+        # Clear collectibles ONLY if they are part of the world switch logic.
+        # For this game, they persist between worlds, so we don't clear them.
 
         map_data = MAPS[world_name]
         wall_color = LIGHT_WALL_COLOR if world_name == 'light' else SHADOW_WALL_COLOR
 
-        # Find player position and create walls
+        player_created = hasattr(self, 'player')
+
         for row, tiles in enumerate(map_data):
             for col, tile in enumerate(tiles):
                 if tile == 'W':
                     wall = Wall(self, col, row, wall_color)
                     self.all_sprites.add(wall)
                     self.walls.add(wall)
-                elif tile == 'P' and not hasattr(self, 'player'):
+                elif tile == 'P' and not player_created:
                     self.player = Player(self, col, row)
                     self.all_sprites.add(self.player)
+                elif tile == 'C' and not any(
+                        c.rect.center == (col * TILESIZE + TILESIZE // 2, row * TILESIZE + TILESIZE // 2) for c in
+                        self.collectibles):
+                    collectible = Collectible(self, col, row)
+                    self.all_sprites.add(collectible)
+                    self.collectibles.add(collectible)
 
-        # Re-add player to ensure it's drawn on top
-        if hasattr(self, 'player'):
+        if self.player:
             self.player.add(self.all_sprites)
-        else:  # Default position if no 'P' in map
-            self.player = Player(self, 1, 1)
-            self.all_sprites.add(self.player)
 
     def run(self):
-        """The main game loop."""
         while self.running:
             self.clock.tick(FPS)
             self.events()
@@ -178,7 +186,6 @@ class Game:
             self.draw()
 
     def events(self):
-        """Handles all events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.quit()
@@ -187,7 +194,6 @@ class Game:
                     self.switch_world()
 
     def switch_world(self):
-        """Switches between light and shadow worlds."""
         if self.current_world == 'light':
             self.current_world = 'shadow'
         else:
@@ -195,27 +201,37 @@ class Game:
         self.load_world(self.current_world)
 
     def update(self):
-        """Updates all sprite logic."""
         self.all_sprites.update()
+        # Check for player collision with collectibles
+        # The 'True' argument removes the collectible sprite upon collision
+        hits = pygame.sprite.spritecollide(self.player, self.collectibles, True)
+        if hits:
+            self.score += 1
+
+    def draw_text(self, text, size, color, x, y):
+        font = pygame.font.Font(FONT_NAME, size)
+        text_surface = font.render(text, True, color)
+        text_rect = text_surface.get_rect()
+        text_rect.topleft = (x, y)
+        self.screen.blit(text_surface, text_rect)
 
     def draw(self):
-        """Draws everything to the screen."""
         floor_color = LIGHT_FLOOR_COLOR if self.current_world == 'light' else SHADOW_FLOOR_COLOR
         self.screen.fill(floor_color)
         self.all_sprites.draw(self.screen)
+        # Draw the score UI
+        self.draw_text(f"Score: {self.score}", 30, WHITE, 10, 10)
         pygame.display.flip()
 
     def quit(self):
-        """Cleans up and exits the game."""
         self.running = False
 
 
 # --- Main execution ---
 if __name__ == '__main__':
     game = Game()
-    game.new()
     while game.running:
-        game.run()
+        game.new()
 
     pygame.quit()
     sys.exit()
