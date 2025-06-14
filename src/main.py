@@ -1,4 +1,4 @@
-# Shadow Switch - v0.1: Basic Skeleton
+# Shadow Switch - v0.2: Tile-Based World
 import pygame
 import sys
 
@@ -8,37 +8,54 @@ WIDTH, HEIGHT = 800, 600
 # Frames per second
 FPS = 60
 # Player properties
-PLAYER_SIZE = 50
+PLAYER_SIZE = 40
 PLAYER_SPEED = 5
+# Tile properties
+TILESIZE = 40
+GRID_WIDTH = WIDTH / TILESIZE
+GRID_HEIGHT = HEIGHT / TILESIZE
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-PLAYER_COLOR = (255, 0, 0)  # Red for now
+PLAYER_COLOR = (255, 0, 0)  # Red
+WALL_COLOR = (100, 100, 100)  # Grey
+FLOOR_COLOR = (40, 40, 40)  # Dark Grey
+
+# --- Map Data ---
+# A simple hard-coded map. 'W' is a wall, '.' is a floor.
+MAP = [
+    "WWWWWWWWWWWWWWWWWWWW",
+    "W..................W",
+    "W.WWW..........WWW.W",
+    "W...W..........W...W",
+    "W.W.W..........W.W.W",
+    "W...W..........W...W",
+    "W.WWW..........WWW.W",
+    "W..................W",
+    "W..................W",
+    "W.WWW..........WWW.W",
+    "W...W..........W...W",
+    "W.W.W..........W.W.W",
+    "W...W..........W...W",
+    "W.WWW..........WWW.W",
+    "WWWWWWWWWWWWWWWWWWWW",
+]
 
 
 # --- Player Class ---
 class Player(pygame.sprite.Sprite):
-    """
-    Represents the player character.
-    For now, it's just a colored square.
-    """
+    """Represents the player character."""
 
-    def __init__(self):
+    def __init__(self, game, x, y):
         super().__init__()
-        # Create a placeholder image for the player
+        self.game = game
         self.image = pygame.Surface([PLAYER_SIZE, PLAYER_SIZE])
         self.image.fill(PLAYER_COLOR)
-        # Get the rectangle object for positioning
         self.rect = self.image.get_rect()
-        # Start the player in the center of the screen
-        self.rect.center = (WIDTH // 2, HEIGHT // 2)
+        self.rect.topleft = (x * TILESIZE, y * TILESIZE)
 
     def update(self):
-        """
-        Update the player's position based on key presses.
-        This method is called once per frame.
-        """
-        # Get a dictionary of all keys currently being held down
+        """Update the player's position based on key presses."""
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.rect.x -= PLAYER_SPEED
@@ -49,54 +66,73 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             self.rect.y += PLAYER_SPEED
 
-        # --- Boundary checks to keep the player on screen ---
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > WIDTH:
-            self.rect.right = WIDTH
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > HEIGHT:
-            self.rect.bottom = HEIGHT
+        # --- Boundary checks ---
+        if self.rect.left < 0: self.rect.left = 0
+        if self.rect.right > WIDTH: self.rect.right = WIDTH
+        if self.rect.top < 0: self.rect.top = 0
+        if self.rect.bottom > HEIGHT: self.rect.bottom = HEIGHT
+
+
+# --- Wall Class ---
+class Wall(pygame.sprite.Sprite):
+    """Represents a wall obstacle."""
+
+    def __init__(self, game, x, y):
+        super().__init__()
+        self.game = game
+        self.image = pygame.Surface((TILESIZE, TILESIZE))
+        self.image.fill(WALL_COLOR)
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x * TILESIZE, y * TILESIZE)
 
 
 # --- Game Class ---
 class Game:
-    """
-    Main class to manage the game window, loop, and states.
-    """
+    """Manages the game window, loop, and states."""
 
     def __init__(self):
         pygame.init()
-        # Set up the screen and clock
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Shadow Switch")
         self.clock = pygame.time.Clock()
         self.running = True
 
-        # Sprite groups
+    def new(self):
+        """Starts a new game."""
         self.all_sprites = pygame.sprite.Group()
-        self.player = Player()
-        self.all_sprites.add(self.player)
+        self.walls = pygame.sprite.Group()
+
+        # Iterate through the map data to create walls and find player start
+        for row, tiles in enumerate(MAP):
+            for col, tile in enumerate(tiles):
+                if tile == 'W':
+                    wall = Wall(self, col, row)
+                    self.all_sprites.add(wall)
+                    self.walls.add(wall)
+                elif tile == '.':
+                    # Player starting position can be the first floor tile found
+                    if not hasattr(self, 'player'):
+                        self.player = Player(self, col, row)
+                        self.all_sprites.add(self.player)
+
+        # In case the map has no floor tiles, place player at a default spot
+        if not hasattr(self, 'player'):
+            self.player = Player(self, 1, 1)  # Default position
+            self.all_sprites.add(self.player)
 
     def run(self):
         """The main game loop."""
         while self.running:
-            # Keep loop running at the right speed
             self.clock.tick(FPS)
-            # Process input (events)
             self.events()
-            # Update game state
             self.update()
-            # Draw everything
             self.draw()
 
     def events(self):
-        """Handles all events, like closing the window."""
+        """Handles all events."""
         for event in pygame.event.get():
-            # Check for closing the window
             if event.type == pygame.QUIT:
-                self.running = False
+                self.quit()
 
     def update(self):
         """Updates all sprite logic."""
@@ -104,21 +140,22 @@ class Game:
 
     def draw(self):
         """Draws everything to the screen."""
-        # Fill the background with a solid color
-        self.screen.fill(BLACK)
-        # Draw all sprites
+        self.screen.fill(FLOOR_COLOR)
         self.all_sprites.draw(self.screen)
-        # After drawing everything, flip the display
         pygame.display.flip()
 
     def quit(self):
         """Cleans up and exits the game."""
-        pygame.quit()
-        sys.exit()
+        self.running = False
 
 
 # --- Main execution ---
 if __name__ == '__main__':
     game = Game()
-    game.run()
-    game.quit()
+    game.new()  # Initialize a new game state
+    while game.running:
+        game.run()
+
+    pygame.quit()
+    sys.exit()
+
