@@ -1,45 +1,49 @@
-# **Shadow Switch \- Game Design Document**
+# **Shadow Switch**
 
-### **1\. Game Concept**
+## **Description**
 
-**"Shadow Switch"** is a top-down 2D puzzle game. The player controls a character with the unique ability to switch between two parallel realities: the **Light World** and the **Shadow World**. The goal is to navigate through levels by collecting all required items and solving environmental puzzles that require switching between the worlds.
+**Shadow Switch** is a 2D pixel art game built with Pygame.
 
-### **2\. Core Features & Mechanics**
+The player controls a character capable of switching between two realities – a bright world and a shadow world.
 
-#### **2.1. Game Flow**
+Each world contains unique paths, obstacles, and collectible items.
 
-1. **Intro Screen**: The game starts with a simple splash screen displaying the game's title. After a few seconds, it automatically transitions to the Main Menu.  
-2. **Main Menu**: A central menu with a clickable "Play" button. Starting the game will lead to the main gameplay.  
-3. **Gameplay**: The player navigates the level, switching between worlds to solve puzzles and collect items.
+The goal is to collect all items while avoiding traps by strategically switching between worlds.
 
-#### **2.2. Player Controls**
+## **Core Features (Mandatory Requirements)**
 
-* **Movement**: WASD or Arrow Keys for top-down movement.  
-* **World Switch**: Spacebar to instantly toggle between the Light and Shadow worlds.
+* Intro Screen  
+  A short animation or static image displaying the game title, automatically transitioning to the menu.  
+* Main Menu \+ Play Button  
+  A basic menu with a working “Play” button.  
+* Multiple Sprite Types  
+  Includes different sprites for the player, items, light-world obstacles, shadow-world obstacles, and background tiles.  
+* Spritesheets and Tiles  
+  Uses 64x64 pixel spritesheets and tile-based levels. Switching worlds changes the active tile layer.  
+* Animations  
+  Player walking animation, switch-world transition effects, and collectible item animations.  
+* **User Input Handling**  
+  * Arrow keys or WASD to move  
+  * Spacebar to switch between worlds  
+* Collision and Reactions  
+  Collisions depend on which world is currently active. Obstacles in the inactive world are ignored.  
+* Score System  
+  Each collected item increases the score. The current score is always displayed on screen.
 
-#### **2.3. World Switching**
+## **Optional Features (if time allows)**
 
-* The core mechanic. A path blocked in the Light World may be open in the Shadow World, and vice versa.  
-* The level map is two-layered, and the game simply toggles which layer is active for collisions and visuals.
+* Basic sound effects (switching, collecting, collision)  
+* World-specific background music
 
-#### **2.4. Sprites & Environment**
+## **Why This Idea?**
 
-* **Player**: The character controlled by the user.  
-* **Obstacles**: Walls or traps that block the player's path in one of the two worlds.  
-* **Collectibles**: Items scattered throughout the level. The goal is to collect all of them.  
-* **Tiles**: The world is built from a tile-based map system.
+* The concept is original and not on the list of forbidden game types.  
+* It allows for visually interesting and mechanically engaging level design.  
+* It fully satisfies the assignment’s technical requirements.  
+* It’s well-suited for a two-person team.
 
-#### **2.5. Collision & Interaction**
-
-* The player will be blocked by obstacles that are solid in the currently active world.  
-* When the player touches a collectible item, the item is removed, and the player's score increases.
-
-#### **2.6. Scoring & UI**
-
-* The game will display a score on-screen, which is a count of the collected items.
-
-#### **2.7. Animation**
-
-* **Player**: The player character will have a walking animation.  
-* **World Switch**: A simple visual effect will play when the world is switched.  
-* **Collectibles**: Items may have a simple animation (e.g., glowing or bobbing).
+## Technologies Used
+ 
+* Python 3
+* [Pygame](https://www.pygame.org/)
+* Numpy

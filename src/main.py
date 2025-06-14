@@ -1,17 +1,18 @@
-# Shadow Switch - v0.5.1: Game States & Flow Fix
+# Shadow Switch - v0.5.2: Updated Tile Size
 import pygame
 import sys
 
 # --- Constants ---
-# Screen dimensions
-WIDTH, HEIGHT = 800, 600
+# Tile properties
+TILESIZE = 64 # Changed from 40 to 64 to match documentation
+# Screen dimensions (adjusted for new tile size)
+WIDTH = 12 * TILESIZE  # 768
+HEIGHT = 10 * TILESIZE # 640
 # Frames per second
 FPS = 60
 # Player properties
-PLAYER_SIZE = 40
+PLAYER_SIZE = TILESIZE - 24 # Make player slightly smaller than a tile
 PLAYER_SPEED = 5
-# Tile properties
-TILESIZE = 40
 # Font
 FONT_NAME = pygame.font.match_font('arial')
 
@@ -19,7 +20,7 @@ FONT_NAME = pygame.font.match_font('arial')
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 PLAYER_COLOR = (255, 0, 0)
-COLLECTIBLE_COLOR = (255, 255, 0)  # Yellow
+COLLECTIBLE_COLOR = (255, 255, 0) # Yellow
 # Light World
 LIGHT_WALL_COLOR = (130, 82, 1)
 LIGHT_FLOOR_COLOR = (210, 180, 140)
@@ -27,46 +28,35 @@ LIGHT_FLOOR_COLOR = (210, 180, 140)
 SHADOW_WALL_COLOR = (75, 0, 130)
 SHADOW_FLOOR_COLOR = (48, 25, 52)
 
-# --- Map Data ---
+# --- Map Data (adjusted for new screen size) ---
 # 'W'=Wall, '.'=Floor, 'P'=Player, 'C'=Collectible
 LIGHT_MAP = [
-    "WWWWWWWWWWWWWWWWWWWW",
-    "WP.C......W........W",
-    "W.WWWWW...W...WWWW.W",
-    "W...W.....W......W.W",
-    "W.W.W.WWWWWWWWW..W.W",
-    "W.W...W.......C..W.W",
-    "W.W.WWWWW.WWWWWW.W.W",
-    "W.W.W.......W....W.W",
-    "W.W.W.WWWWWWW.WW.W.W",
-    "W.W...W.......W..W.W",
-    "W.WWWWW.WWWWWWWW.W.W",
-    "W.C...W..........W.W",
-    "W.WWWWW.WWWWWWWW.W.W",
-    "W...............C..W",
-    "WWWWWWWWWWWWWWWWWWWW",
+    "WWWWWWWWWWWW",
+    "WP.C...W...W",
+    "W.WWWW.W.W.W",
+    "W....W.W.W.W",
+    "W.WW.W.W.W.W",
+    "W.C..W...W.W",
+    "W.WWWWWW.W.W",
+    "W........W.W",
+    "W....C...W.W",
+    "WWWWWWWWWWWW",
 ]
 SHADOW_MAP = [
-    "WWWWWWWWWWWWWWWWWWWW",
-    "WP.................W",
-    "W.W.WWWWW.WWWWWWWW.W",
-    "W.W...W.......W..W.W",
-    "W.WWWWW.WWWWWWWW.W.W",
-    "W................C.W",
-    "W...WWWWWWWWWWWW...W",
-    "W...........C......W",
-    "W.WWWW...W...WWWWW.W",
-    "W....W...W...W...W.W",
-    "W.WW.W...W...W.WWW.W",
-    "W.W....W...W...W.W.W",
-    "W.WWWWWW...WWWWW.W.W",
-    "W.C................W",
-    "WWWWWWWWWWWWWWWWWWWW",
+    "WWWWWWWWWWWW",
+    "WP.C.......W",
+    "W.W.WWWWWW.W",
+    "W.W........W",
+    "W.WWWWWW.W.W",
+    "W.C......W.W",
+    "W.W.WWWW.W.W",
+    "W.W.W....W.W",
+    "W.W...C..W.W",
+    "WWWWWWWWWWWW",
 ]
 MAPS = {'light': LIGHT_MAP, 'shadow': SHADOW_MAP}
 
-
-# --- Player Class ---
+# --- Player Class (no changes) ---
 class Player(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
         super().__init__()
@@ -105,8 +95,7 @@ class Player(pygame.sprite.Sprite):
         self.move(dx=dx, dy=dy)
         self.rect.topleft = (self.x, self.y)
 
-
-# --- Wall Class ---
+# --- Wall Class (no changes) ---
 class Wall(pygame.sprite.Sprite):
     def __init__(self, game, x, y, color):
         super().__init__()
@@ -116,8 +105,7 @@ class Wall(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.topleft = (x * TILESIZE, y * TILESIZE)
 
-
-# --- Collectible Class ---
+# --- Collectible Class (no changes) ---
 class Collectible(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
         super().__init__()
@@ -127,8 +115,7 @@ class Collectible(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (x * TILESIZE + TILESIZE // 2, y * TILESIZE + TILESIZE // 2)
 
-
-# --- Game Class ---
+# --- Game Class (no major changes) ---
 class Game:
     def __init__(self):
         pygame.init()
@@ -136,27 +123,23 @@ class Game:
         pygame.display.set_caption("Shadow Switch")
         self.clock = pygame.time.Clock()
         self.running = True
-        self.state = 'intro'  # Possible states: intro, menu, playing
+        self.state = 'intro'
 
     def new_game(self):
-        """Sets up all variables for a new game."""
         self.score = 0
         self.current_world = 'light'
         self.all_sprites = pygame.sprite.Group()
         self.walls = pygame.sprite.Group()
         self.collectibles = pygame.sprite.Group()
-        self.player = None  # Ensure player is reset
+        self.player = None
         self.load_world(self.current_world)
 
     def load_world(self, world_name):
         for wall in self.walls:
             wall.kill()
-
         map_data = MAPS[world_name]
         wall_color = LIGHT_WALL_COLOR if world_name == 'light' else SHADOW_WALL_COLOR
-
         player_created = self.player is not None
-
         for row, tiles in enumerate(map_data):
             for col, tile in enumerate(tiles):
                 if tile == 'W':
@@ -166,18 +149,14 @@ class Game:
                 elif tile == 'P' and not player_created:
                     self.player = Player(self, col, row)
                     self.all_sprites.add(self.player)
-                elif tile == 'C' and not any(
-                        c.rect.center == (col * TILESIZE + TILESIZE // 2, row * TILESIZE + TILESIZE // 2) for c in
-                        self.collectibles):
+                elif tile == 'C' and not any(c.rect.center == (col * TILESIZE + TILESIZE // 2, row * TILESIZE + TILESIZE // 2) for c in self.collectibles):
                     collectible = Collectible(self, col, row)
                     self.all_sprites.add(collectible)
                     self.collectibles.add(collectible)
-
         if self.player:
             self.player.add(self.all_sprites)
 
     def run(self):
-        """The main game loop for the 'playing' state."""
         self.playing = True
         while self.playing:
             self.clock.tick(FPS)
@@ -186,7 +165,6 @@ class Game:
             self.draw()
 
     def events(self):
-        """Handles events for the 'playing' state."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.playing = False
@@ -223,7 +201,6 @@ class Game:
         pygame.display.flip()
 
     def show_intro_screen(self):
-        """Displays the intro screen, waiting for key press or time out."""
         start_time = pygame.time.get_ticks()
         waiting = True
         while waiting:
@@ -232,32 +209,22 @@ class Game:
                 if event.type == pygame.QUIT:
                     waiting = False
                     self.running = False
-                # Allow skipping intro with any key press
                 if event.type == pygame.KEYUP:
                     waiting = False
                     self.state = 'menu'
-
-            # Timeout after 3 seconds
             if pygame.time.get_ticks() - start_time > 3000:
                 waiting = False
                 self.state = 'menu'
-
-            # Drawing
             self.screen.fill(BLACK)
             self.draw_text("Shadow Switch", 64, WHITE, WIDTH / 2, HEIGHT / 4, align="center")
             self.draw_text("Loading...", 22, WHITE, WIDTH / 2, HEIGHT / 2, align="center")
             pygame.display.flip()
 
     def show_menu_screen(self):
-        """Displays the main menu, waiting for the user to click 'Play'."""
         waiting = True
         while waiting:
             self.clock.tick(FPS)
-
-            # Define button here to check for mouse hover later if needed
             play_button = pygame.Rect(WIDTH / 2 - 100, HEIGHT / 2 - 25, 200, 50)
-
-            # Event handling
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     waiting = False
@@ -266,14 +233,11 @@ class Game:
                     if play_button.collidepoint(event.pos):
                         waiting = False
                         self.state = 'playing'
-
-            # Drawing
             self.screen.fill(BLACK)
             self.draw_text("Shadow Switch", 64, WHITE, WIDTH / 2, HEIGHT / 4, align="center")
             pygame.draw.rect(self.screen, LIGHT_WALL_COLOR, play_button)
             self.draw_text("Play", 40, WHITE, WIDTH / 2, HEIGHT / 2, align="center")
             pygame.display.flip()
-
 
 # --- Main execution ---
 if __name__ == '__main__':
