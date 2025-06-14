@@ -1,68 +1,45 @@
-# **Shadow Switch \- Game Documentation**
+# **Shadow Switch \- Game Design Document**
 
-## **1\. Game Design Specification**
+### **1\. Game Concept**
 
-### **1.1. Game Concept**
+**"Shadow Switch"** is a top-down 2D puzzle game. The player controls a character with the unique ability to switch between two parallel realities: the **Light World** and the **Shadow World**. The goal is to navigate through levels by collecting all required items and solving environmental puzzles that require switching between the worlds.
 
-**"Shadow Switch"** is a top-down 2D puzzle game. The player controls a character who has the unique ability to switch between two parallel realities: the **Light World** and the **Shadow World**. The goal is to navigate through a series of levels by collecting all required items, avoiding traps, and solving environmental puzzles. Success hinges on the player's ability to strategically switch between the two worlds to overcome obstacles that are only present in one reality.
+### **2\. Core Features & Mechanics**
 
-### **1.2. Core Mechanics**
+#### **2.1. Game Flow**
 
-#### **Player Movement**
+1. **Intro Screen**: The game starts with a simple splash screen displaying the game's title. After a few seconds, it automatically transitions to the Main Menu.  
+2. **Main Menu**: A central menu with a clickable "Play" button. Starting the game will lead to the main gameplay.  
+3. **Gameplay**: The player navigates the level, switching between worlds to solve puzzles and collect items.
 
-* The player will be controlled using the standard WASD or Arrow Keys for movement in four directions (up, down, left, right).  
-* Movement is tile-based, meaning the player moves from one grid square to the next.
+#### **2.2. Player Controls**
 
-#### **World Switching**
+* **Movement**: WASD or Arrow Keys for top-down movement.  
+* **World Switch**: Spacebar to instantly toggle between the Light and Shadow worlds.
 
-* The central mechanic of the game is switching between the Light and Shadow worlds. This will be triggered by pressing the Spacebar.  
-* Each world has a different layout of obstacles. A path that is blocked by a wall in the Light World might be open in the Shadow World, and vice-versa.  
-* **Technical Implementation**: We will represent each level with a single, two-layered map. Each tile on the map will have data for both its "Light" state and its "Shadow" state (e.g., 'wall' or 'floor'). The world-switching mechanic simply toggles which layer is currently active for collision and rendering.
+#### **2.3. World Switching**
 
-#### **Collision Logic**
+* The core mechanic. A path blocked in the Light World may be open in the Shadow World, and vice versa.  
+* The level map is two-layered, and the game simply toggles which layer is active for collisions and visuals.
 
-* The player's movement will be restricted by obstacles (e.g., walls).  
-* Collision will only occur with obstacles that exist in the **currently active world**. This allows the player to "phase through" a Light World wall by switching to the Shadow World where the wall doesn't exist.
+#### **2.4. Sprites & Environment**
 
-#### **Collectibles & Scoring**
+* **Player**: The character controlled by the user.  
+* **Obstacles**: Walls or traps that block the player's path in one of the two worlds.  
+* **Collectibles**: Items scattered throughout the level. The goal is to collect all of them.  
+* **Tiles**: The world is built from a tile-based map system.
 
-* Each level will contain a number of collectible items.  
-* The primary goal is to collect all of these items.  
-* The player's score will be a count of the items collected. This score will be displayed on the UI at all times.  
-* Collectibles exist independently of the worlds; they can be picked up in either reality. When the player collides with an item, it is collected and removed from the game.
+#### **2.5. Collision & Interaction**
 
-### **1.3. Level Structure**
+* The player will be blocked by obstacles that are solid in the currently active world.  
+* When the player touches a collectible item, the item is removed, and the player's score increases.
 
-* Levels will be pre-designed and hard-coded into the game.  
-* The design will focus on creating simple puzzles that require the player to think about which reality they need to be in to navigate the map and reach all the collectibles.  
-* For example, a collectible might be surrounded by walls in the Light World, forcing the player to find an alternate path in the Shadow World to reach it.
+#### **2.6. Scoring & UI**
 
-### **1.4. Controls**
+* The game will display a score on-screen, which is a count of the collected items.
 
-* **Move Up**: W / Up Arrow  
-* **Move Down**: S / Down Arrow  
-* **Move Left**: A / Left Arrow  
-* **Move Right**: D / Right Arrow  
-* **Switch World**: Spacebar
+#### **2.7. Animation**
 
-### **1.5. Art Style & Placeholders**
-
-* Initially, all game elements (player, walls, collectibles) will be represented by simple colored squares (placeholders) to allow us to focus on mechanics.  
-* The **Light World** will have a bright, clean aesthetic.  
-* The **Shadow World** will have a dark, contrasting aesthetic.  
-* These placeholders will be replaced by sprites from a spritesheet later in development.
-
-## **2\. Core Components (v0.1)**
-
-### **2.1. game.py \- Main File**
-
-This file serves as the entry point for the game.
-
-* **Constants**: Defines core game values like screen dimensions (WIDTH, HEIGHT), frame rate (FPS), and colors.  
-* **Player Class**: A pygame.sprite.Sprite subclass. In this initial version, it's a simple red square that handles its own movement based on keyboard input.  
-* **Game Class**: Manages the main game loop, window setup, event handling, and rendering.  
-  * \_\_init\_\_(): Initializes Pygame, the screen, and creates sprite groups.  
-  * run(): Contains the main while loop that drives the game.  
-  * events(): Handles quitting the game.  
-  * update(): Calls the .update() method on all sprites.  
-  * draw(): Renders the background and all sprites.
+* **Player**: The player character will have a walking animation.  
+* **World Switch**: A simple visual effect will play when the world is switched.  
+* **Collectibles**: Items may have a simple animation (e.g., glowing or bobbing).
