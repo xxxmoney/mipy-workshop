@@ -1,4 +1,4 @@
-# Shadow Switch - v0.4: Collectibles & Scoring
+# Shadow Switch - v0.5.1: Game States & Flow Fix
 import pygame
 import sys
 
@@ -16,6 +16,7 @@ TILESIZE = 40
 FONT_NAME = pygame.font.match_font('arial')
 
 # --- Colors ---
+BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 PLAYER_COLOR = (255, 0, 0)
 COLLECTIBLE_COLOR = (255, 255, 0)  # Yellow
@@ -77,13 +78,11 @@ class Player(pygame.sprite.Sprite):
         self.y = y * TILESIZE
 
     def move(self, dx=0, dy=0):
-        # We check for future collision based on movement delta
         if not self.check_collision(dx, dy):
             self.x += dx
             self.y += dy
 
     def check_collision(self, dx=0, dy=0):
-        # Create a temporary rect to check for future collision
         temp_rect = self.rect.copy()
         temp_rect.x += dx
         temp_rect.y += dy
@@ -137,27 +136,26 @@ class Game:
         pygame.display.set_caption("Shadow Switch")
         self.clock = pygame.time.Clock()
         self.running = True
-        self.current_world = 'light'
-        self.score = 0
+        self.state = 'intro'  # Possible states: intro, menu, playing
 
-    def new(self):
+    def new_game(self):
+        """Sets up all variables for a new game."""
+        self.score = 0
+        self.current_world = 'light'
         self.all_sprites = pygame.sprite.Group()
         self.walls = pygame.sprite.Group()
         self.collectibles = pygame.sprite.Group()
+        self.player = None  # Ensure player is reset
         self.load_world(self.current_world)
-        self.run()
 
     def load_world(self, world_name):
         for wall in self.walls:
             wall.kill()
 
-        # Clear collectibles ONLY if they are part of the world switch logic.
-        # For this game, they persist between worlds, so we don't clear them.
-
         map_data = MAPS[world_name]
         wall_color = LIGHT_WALL_COLOR if world_name == 'light' else SHADOW_WALL_COLOR
 
-        player_created = hasattr(self, 'player')
+        player_created = self.player is not None
 
         for row, tiles in enumerate(map_data):
             for col, tile in enumerate(tiles):
@@ -179,16 +177,20 @@ class Game:
             self.player.add(self.all_sprites)
 
     def run(self):
-        while self.running:
+        """The main game loop for the 'playing' state."""
+        self.playing = True
+        while self.playing:
             self.clock.tick(FPS)
             self.events()
             self.update()
             self.draw()
 
     def events(self):
+        """Handles events for the 'playing' state."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.quit()
+                self.playing = False
+                self.running = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.switch_world()
@@ -202,36 +204,88 @@ class Game:
 
     def update(self):
         self.all_sprites.update()
-        # Check for player collision with collectibles
-        # The 'True' argument removes the collectible sprite upon collision
         hits = pygame.sprite.spritecollide(self.player, self.collectibles, True)
         if hits:
-            self.score += 1
+            self.score += len(hits)
 
-    def draw_text(self, text, size, color, x, y):
+    def draw_text(self, text, size, color, x, y, align="topleft"):
         font = pygame.font.Font(FONT_NAME, size)
         text_surface = font.render(text, True, color)
         text_rect = text_surface.get_rect()
-        text_rect.topleft = (x, y)
+        setattr(text_rect, align, (x, y))
         self.screen.blit(text_surface, text_rect)
 
     def draw(self):
         floor_color = LIGHT_FLOOR_COLOR if self.current_world == 'light' else SHADOW_FLOOR_COLOR
         self.screen.fill(floor_color)
         self.all_sprites.draw(self.screen)
-        # Draw the score UI
         self.draw_text(f"Score: {self.score}", 30, WHITE, 10, 10)
         pygame.display.flip()
 
-    def quit(self):
-        self.running = False
+    def show_intro_screen(self):
+        """Displays the intro screen, waiting for key press or time out."""
+        start_time = pygame.time.get_ticks()
+        waiting = True
+        while waiting:
+            self.clock.tick(FPS)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    waiting = False
+                    self.running = False
+                # Allow skipping intro with any key press
+                if event.type == pygame.KEYUP:
+                    waiting = False
+                    self.state = 'menu'
+
+            # Timeout after 3 seconds
+            if pygame.time.get_ticks() - start_time > 3000:
+                waiting = False
+                self.state = 'menu'
+
+            # Drawing
+            self.screen.fill(BLACK)
+            self.draw_text("Shadow Switch", 64, WHITE, WIDTH / 2, HEIGHT / 4, align="center")
+            self.draw_text("Loading...", 22, WHITE, WIDTH / 2, HEIGHT / 2, align="center")
+            pygame.display.flip()
+
+    def show_menu_screen(self):
+        """Displays the main menu, waiting for the user to click 'Play'."""
+        waiting = True
+        while waiting:
+            self.clock.tick(FPS)
+
+            # Define button here to check for mouse hover later if needed
+            play_button = pygame.Rect(WIDTH / 2 - 100, HEIGHT / 2 - 25, 200, 50)
+
+            # Event handling
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    waiting = False
+                    self.running = False
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if play_button.collidepoint(event.pos):
+                        waiting = False
+                        self.state = 'playing'
+
+            # Drawing
+            self.screen.fill(BLACK)
+            self.draw_text("Shadow Switch", 64, WHITE, WIDTH / 2, HEIGHT / 4, align="center")
+            pygame.draw.rect(self.screen, LIGHT_WALL_COLOR, play_button)
+            self.draw_text("Play", 40, WHITE, WIDTH / 2, HEIGHT / 2, align="center")
+            pygame.display.flip()
 
 
 # --- Main execution ---
 if __name__ == '__main__':
     game = Game()
     while game.running:
-        game.new()
+        if game.state == 'intro':
+            game.show_intro_screen()
+        elif game.state == 'menu':
+            game.show_menu_screen()
+        elif game.state == 'playing':
+            game.new_game()
+            game.run()
 
     pygame.quit()
     sys.exit()
